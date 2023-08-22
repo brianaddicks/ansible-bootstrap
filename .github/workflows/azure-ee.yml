@@ -20,7 +20,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   call-deploy-workflow:
-    uses:  "${{ github.action_repository }}/.github/workflows/deploy-multiarch.yml@main"
+    uses:  "./.github/workflows/deploy-multiarch.yml@main"
     with:
       EE_FOLDER_NAME: 'ee/azure-ee'
       EE_IMAGE_TAG: 'latest'
