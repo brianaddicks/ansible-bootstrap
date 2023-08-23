@@ -128,7 +128,7 @@ jobs:
 
       - name: Build Multiarch Containers
         id: dockerbuild
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v4.11
         with:
           context: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}/context/."
           platforms: linux/amd64,linux/arm64
