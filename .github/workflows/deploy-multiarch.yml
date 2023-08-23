@@ -124,7 +124,7 @@ jobs:
       - name: debug output
         working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}/context/_build/"
         run: |
-          echo requirements.txt
+          cat requirements.txt
 
       - name: Build Multiarch Containers
         id: dockerbuild
