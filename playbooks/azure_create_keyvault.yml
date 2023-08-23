@@ -43,8 +43,35 @@
 - name: azure_create_secrets
   hosts: azure
   gather_facts: false
+  vars:
+    - lets_encrypt_key_path: le.key
+    - ansible_key_path: ansible.key
 
   tasks:
+    - name: Generate an openssl private key with the default values (4096 bits, RSA)
+      community.crypto.openssl_privatekey:
+        path: "{{ lets_encrypt_key_path }}"
+
+    - name: Generate an openssl private key with the default values (4096 bits, RSA)
+      community.crypto.openssl_privatekey:
+        path: "{{ ansible_key_path }}"
+
+    - name: Add LetsEncrypt key to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: letsencrypt-account-key
+        secret_value: "{{ lookup('ansible.builtin.file', '{{ lets_encrypt_key_path }}') }}"
+        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+        tags:
+          ansible-play: "{{ ansible_play_name }}"
+
+    - name: Add Ansible key to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: ansible-ssh-key
+        secret_value: "{{ lookup('ansible.builtin.file', '{{ ansible_key_path }}') }}"
+        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+        tags:
+          ansible-play: "{{ ansible_play_name }}"
+
     - name: Add secrets to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
         secret_name: "{{ item.name }}"
@@ -55,13 +82,3 @@
       loop: "{{ azure_secrets }}"
       when: azure_secrets is defined and
             (azure_secrets | length > 0)
-
-    - name: Generate private keys
-      azure.azcollection.azure_rm_keyvaultkey:
-        key_name: "{{ item.key_name }}"
-        key_type: "{{ item.key_type }}"
-        key_size: "{{ item.key_size }}"
-        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
-      loop: "{{ azure_keys }}"
-      when: azure_keys is defined and
-            (azure_keys | length > 0)
