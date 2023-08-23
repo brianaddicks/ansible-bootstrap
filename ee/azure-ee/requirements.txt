@@ -6,7 +6,7 @@ azure-common==1.1.11
 azure-identity==1.7.0
 azure-mgmt-authorization==2.0.0
 azure-mgmt-apimanagement==3.0.0
-azure-mgmt-batch==5.0.1
+azure-mgmt-batch
 azure-mgmt-cdn==11.0.0
 azure-mgmt-compute==26.1.0
 azure-mgmt-containerinstance==9.0.0
@@ -37,7 +37,7 @@ azure-nspkg==2.0.0
 azure-storage-blob==12.11.0
 msrest==0.7.1
 msrestazure==0.6.4
-azure-keyvault==1.1.0
+azure-keyvault
 azure-mgmt-keyvault==10.0.0
 azure-graphrbac==0.61.1
 azure-mgmt-cosmosdb==6.4.0
