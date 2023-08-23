@@ -19,4 +19,17 @@ This repository has github actions that require the following secrets be set on 
 
 ## Azure Key Vault
 
-Execution Environment:
+### Create SP for Azure login
+
+1. az login
+1. az account subscription list
+1. az ad sp create-for-rbac --name ansible --role Contributor --scopes <ID-FROM-PREVIOUS-STEP>
+1. Save output for use in azure playbooks
+
+### Run Playbook
+
+1. Export the following environment variables
+    * AZURE_CLIENT_ID
+    * AZURE_SECRET
+    * AZURE_SUBSCRIPTION_ID
+    * AZURE_TENANT

@@ -1,0 +1,67 @@
+---
+- name: azure_create_keyvault
+  hosts: azure
+  gather_facts: false
+
+  tasks:
+    - name: Create Azure Resource Group
+      azure.azcollection.azure_rm_resourcegroup:
+        name: "{{ azure_resourcegroup_name }}"
+        location: "{{ azure_location }}"
+        tags:
+          ansible-play: "{{ ansible_play_name }}"
+
+    - name: Get SP Object ID
+      azure.azcollection.azure_rm_adserviceprincipal_info:
+        app_id: "{{ lookup('ansible.builtin.env', 'AZURE_CLIENT_ID') }}"
+        tenant: "{{ lookup('ansible.builtin.env', 'AZURE_TENANT') }}"
+      register: azure_sp_object_id
+
+    - name: Create key vault instance
+      azure.azcollection.azure_rm_keyvault:
+        resource_group: "{{ azure_resourcegroup_name }}"
+        vault_name: "{{ azure_vault_name }}"
+        enabled_for_deployment: true
+        vault_tenant: "{{ lookup('ansible.builtin.env', 'AZURE_TENANT') }}"
+        tags:
+          ansible-play: "{{ ansible_play_name }}"
+        sku:
+          family: A
+          name: standard
+        access_policies:
+          - tenant_id: "{{ lookup('ansible.builtin.env', 'AZURE_TENANT') }}"
+            object_id: "{{ azure_sp_object_id.service_principals[0].object_id }}"
+            secrets: "{{ keyvault_secret_access }}"
+            keys: "{{ keyvault_key_access }}"
+            certificates: "{{ keyvault_cert_access }}"
+          - tenant_id: "{{ lookup('ansible.builtin.env', 'AZURE_TENANT') }}"
+            object_id: "{{ azure_vault_admin_user }}"
+            secrets: "{{ keyvault_secret_admin_access }}"
+            keys: "{{ keyvault_key_admin_access }}"
+            certificates: "{{ keyvault_cert_admin_access }}"
+
+- name: azure_create_secrets
+  hosts: azure
+  gather_facts: false
+
+  tasks:
+    - name: Add secrets to Azure Key Vault
+      azure.azcollection.azure_rm_keyvaultsecret:
+        secret_name: "{{ item.name }}"
+        secret_value: "{{ item.value }}"
+        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+        tags:
+          ansible-play: "{{ ansible_play_name }}"
+      loop: "{{ azure_secrets }}"
+      when: azure_secrets is defined and
+            (azure_secrets | length > 0)
+
+    - name: Generate private keys
+      azure.azcollection.azure_rm_keyvaultkey:
+        key_name: "{{ item.key_name }}"
+        key_type: "{{ item.key_type }}"
+        key_size: "{{ item.key_size }}"
+        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+      loop: "{{ azure_keys }}"
+      when: azure_keys is defined and
+            (azure_keys | length > 0)
