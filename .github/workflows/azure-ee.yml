@@ -22,7 +22,7 @@ jobs:
   call-deploy-workflow:
     uses:  "./.github/workflows/deploy-multiarch.yml"
     with:
-      EE_FOLDER_NAME: 'ee/azure-ee'
+      EE_FOLDER_NAME: 'azure-ee'
       EE_IMAGE_TAG: 'latest'
     secrets:
       REDHAT_USERNAME: ${{ secrets.REDHAT_USERNAME }}

@@ -21,6 +21,11 @@ on:
         description: 'user provided certificate authority'
         required: false
         type: string
+      EE_ROOT_FOLDER:
+        description: 'root folder for all EEs'
+        default: 'ee'
+        required: false
+        type: string
     secrets:
       REDHAT_PASSWORD:
         description: 'needed for registry login'
@@ -89,45 +94,27 @@ jobs:
 
       - name: substitute token for automation hub
         id: ah-token
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}"
         run: |
           sed -i "s/my_ah_token/$AH_TOKEN/1" ansible.cfg
         env:
           AH_TOKEN: ${{ secrets.AH_TOKEN }}
 
-      # - name: test for ansible
-      #   working-directory: ${{ inputs.EE_FOLDER_NAME }}
-      #   run: |
-      #     ansible --version
-      #   if: ${{ inputs.CA }}
-
-      # - name: add CA copy to ee build file
-      #   working-directory: ${{ inputs.EE_FOLDER_NAME }}
-      #   run: |
-      #     ansible -m lineinfile -a "path=./execution-environment.yml regexp='^\ \ \ \ ADD\ CA.crt' insertbefore='RUN\ pip3' line='    ADD ca.crt /etc/pki/ca-trust/source/anchors/demolab-ca.crt'" localhost
-      #   if: ${{ inputs.CA }}
-
-      # - name: add updat-ca-trust to ee build file
-      #   working-directory: ${{ inputs.EE_FOLDER_NAME }}
-      #   run: |
-      #     ansible -m lineinfile -a "path=./execution-environment.yml regexp='^\ \ \ \ RUN\ update-ca-trust' insertbefore='RUN\ pip3' line='    RUN update-ca-trust'" localhost
-      #   if: ${{ inputs.CA }}
-
       - name: Create the Containerfile file
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}"
         run: ansible-builder create
 
       - name: Update ContainerFile to cp CA files
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}/context/
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}/context/"
         run: ansible localhost -m ansible.builtin.lineinfile -a "dest=./Containerfile insertafter='^RUN ANSIBLE_GALAXY_DISABLE_GPG_VERIFY' line='RUN cp *.crt /etc/pki/ca-trust/source/anchors && update-ca-trust'"
         if: ${{ inputs.CA }}
 
       - name: Create the Dockerfile file
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}"
         run: cp context/Containerfile context/Dockerfile
 
       - name: add trusted CA if provided
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}/context/_build/
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}/context/_build/"
         run: |
           echo $CA > ca.crt
         env:
@@ -138,34 +125,14 @@ jobs:
         id: dockerbuild
         uses: docker/build-push-action@v2
         with:
-          context: ${{ inputs.EE_FOLDER_NAME }}/context/.
+          context: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}/context/."
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      # - name: Build image
-      #   id: build-image
-      #   working-directory: ${{ inputs.EE_FOLDER_NAME }}
-      #   run: |
-      #     ansible-builder build \
-      #     --tag=${{ inputs.EE_FOLDER_NAME }}:${{ inputs.EE_IMAGE_TAG }} \
-      #     --tag=${{ inputs.EE_FOLDER_NAME }}:${{ github.sha }}
-
-      # - name: Push To quay.io
-      #   id: push-to-quay
-      #   uses: redhat-actions/push-to-registry@v2
-      #   with:
-      #     image: ${{ inputs.EE_FOLDER_NAME }}
-      #     tags: |
-      #       ${{ inputs.EE_IMAGE_TAG }}
-      #       ${{ github.sha }}
-      #     registry: quay.io/${{ secrets.QUAY_USERNAME }}/
-      #     username: ${{ secrets.QUAY_USERNAME }}
-      #     password: ${{ secrets.QUAY_PASSWORD }}
-
       - name: Print summary
-        working-directory: ${{ inputs.EE_FOLDER_NAME }}
+        working-directory: "${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }}"
         run: |
           echo "## :rocket: Usage" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -175,12 +142,12 @@ jobs:
           echo "## :pushpin: Ansible info:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "`podman run ${{ inputs.EE_FOLDER_NAME }} ansible --version`" >> $GITHUB_STEP_SUMMARY
+          echo "`podman run ${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }} ansible --version`" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "## :pushpin: Installed collections:" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          echo "`podman run ${{ inputs.EE_FOLDER_NAME }} ansible-galaxy collection list`" >> $GITHUB_STEP_SUMMARY
+          echo "`podman run ${{ inputs.EE_ROOT_FOLDER }}/${{ inputs.EE_FOLDER_NAME }} ansible-galaxy collection list`" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
           echo "## :pushpin: Containerfile:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
