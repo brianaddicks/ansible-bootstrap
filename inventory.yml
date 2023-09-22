@@ -4,63 +4,8 @@ all:
     apiendpoints:
       hosts:
         azure:
-          azure_resourcegroup_name: ansible-keyvault
-          azure_location: eastus2
+        nautobot:
       vars:
         ansible_connection: local
-        keyvault_cert_admin_access:
-          - get
-          - list
-          - delete
-          - create
-          - import
-          - update
-          - managecontacts
-          - getissuers
-          - listissuers
-          - setissuers
-          - deleteissuers
-          - manageissuers
-          - recover
-          - purge
-        keyvault_key_admin_access:
-          - encrypt
-          - decrypt
-          - wrapkey
-          - unwrapkey
-          - sign
-          - verify
-          - get
-          - list
-          - create
-          - update
-          - import
-          - delete
-          - backup
-          - restore
-          - recover
-          - purge
-        keyvault_secret_admin_access:
-          - get
-          - list
-          - set
-          - delete
-          - backup
-          - restore
-          - recover
-          - purge
-        keyvault_cert_access:
-          - get
-          - list
-          - delete
-          - create
-        keyvault_key_access:
-          - get
-          - list
-          - create
-        keyvault_secret_access:
-          - get
-          - list
-          - set
   vars:
     ansible_python_interpreter: /usr/bin/python3

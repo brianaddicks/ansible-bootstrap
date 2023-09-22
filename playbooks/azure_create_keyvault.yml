@@ -45,32 +45,55 @@
   gather_facts: false
   vars:
     - lets_encrypt_key_path: le.key
+    - lets_encrypt_key_secret_name: letsencrypt-account-key
     - ansible_key_path: ansible.key
+    - ansible_key_secret_name: ansible-ssh-key
+    - azure_vault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
 
   tasks:
-    - name: Generate an openssl private key with the default values (4096 bits, RSA)
-      community.crypto.openssl_privatekey:
-        path: "{{ lets_encrypt_key_path }}"
+    # Ansible Secret
+    - name: Check for existing Ansible secret
+      azure.azcollection.azure_rm_keyvaultsecret_info:
+        vault_uri: "{{ azure_vault_uri }}"
+        name: "{{ ansible_key_secret_name }}"
+      register: ansible_key_secret_exists
 
-    - name: Generate an openssl private key with the default values (4096 bits, RSA)
-      community.crypto.openssl_privatekey:
-        path: "{{ ansible_key_path }}"
+    - name: Block to add Ansible key
+      when: ansible_key_secret_exists.secrets is not defined
+      block:
+        - name: Generate an openssl private key with the default values (4096 bits, RSA)
+          community.crypto.openssl_privatekey:
+            path: "{{ ansible_key_path }}"
 
-    - name: Add LetsEncrypt key to Azure Key Vault
-      azure.azcollection.azure_rm_keyvaultsecret:
-        secret_name: letsencrypt-account-key
-        secret_value: "{{ lookup('ansible.builtin.file', '{{ lets_encrypt_key_path }}') }}"
-        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
-        tags:
-          ansible-play: "{{ ansible_play_name }}"
+        - name: Add Ansible key to Azure Key Vault
+          azure.azcollection.azure_rm_keyvaultsecret:
+            secret_name: "{{ ansible_key_secret_name }}"
+            secret_value: "{{ lookup('ansible.builtin.file', '{{ ansible_key_path }}') }}"
+            keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+            tags:
+              ansible-play: "{{ ansible_play_name }}"
 
-    - name: Add Ansible key to Azure Key Vault
-      azure.azcollection.azure_rm_keyvaultsecret:
-        secret_name: ansible-ssh-key
-        secret_value: "{{ lookup('ansible.builtin.file', '{{ ansible_key_path }}') }}"
-        keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
-        tags:
-          ansible-play: "{{ ansible_play_name }}"
+    # LetsEncrypt Secret
+    - name: Check for existing LetsEncrypt secret
+      azure.azcollection.azure_rm_keyvaultsecret_info:
+        vault_uri: "{{ azure_vault_uri }}"
+        name: "{{ lets_encrypt_key_secret_name }}"
+      register: lets_encrypt_key_secret_exists
+
+    - name: Block to add Ansible key
+      when: ansible_key_secret_exists.secrets is not defined
+      block:
+        - name: Generate an openssl private key with the default values (4096 bits, RSA)
+          community.crypto.openssl_privatekey:
+            path: "{{ lets_encrypt_key_path }}"
+
+        - name: Add LetsEncrypt key to Azure Key Vault
+          azure.azcollection.azure_rm_keyvaultsecret:
+            secret_name: "{{ lets_encrypt_key_secret_name }}"
+            secret_value: "{{ lookup('ansible.builtin.file', '{{ lets_encrypt_key_path }}') }}"
+            keyvault_uri: "https://{{ azure_vault_name }}.vault.azure.net/"
+            tags:
+              ansible-play: "{{ ansible_play_name }}"
 
     - name: Add secrets to Azure Key Vault
       azure.azcollection.azure_rm_keyvaultsecret:
@@ -82,3 +105,5 @@
       loop: "{{ azure_secrets }}"
       when: azure_secrets is defined and
             (azure_secrets | length > 0)
+
+...

@@ -1,0 +1,25 @@
+---
+- name: azure_create_keyvault
+  hosts: nautobot
+  gather_facts: false
+  vars:
+    - nautobot_connection: &nb_conn
+        url: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_URL') }}"
+        token: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_TOKEN') }}"
+
+  tasks:
+    - name: Create tenant with all parameters
+      networktocode.nautobot.tenant:
+        <<: *nb_conn
+        name: "{{ item.name | default(omit) }}"
+        tenant_group: "{{ item.name | default(omit) }}"
+        description: "{{ item.name | default(omit) }}"
+        comments: "{{ item.name | default(omit) }}"
+        slug: "{{ item.name | default(omit) }}"
+        tags: "{{ item.name | default(omit) }}"
+        state: "{{ item.name | default(omit) }}"
+      loop: "{{ nautobot_tenants }}"
+      when:
+        - nautobot_tenants is defined
+        - nautobot_tenants | length > 0
+...
