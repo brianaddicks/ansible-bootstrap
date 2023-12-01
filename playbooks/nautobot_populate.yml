@@ -1,25 +1,501 @@
 ---
-- name: azure_create_keyvault
+- name: Add assets to Nautobot
   hosts: nautobot
   gather_facts: false
   vars:
+    - nautobot_url: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_URL') }}"
+    - nautobot_token: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_TOKEN') }}"
     - nautobot_connection: &nb_conn
-        url: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_URL') }}"
-        token: "{{ lookup('ansible.builtin.env', 'NAUTOBOT_TOKEN') }}"
-
+        url: "{{ nautobot_url }}"
+        token: "{{ nautobot_token }}"
+    - netbox_connection: &netbox_conn
+        netbox_url: "{{ nautobot_url }}"
+        netbox_token: "{{ nautobot_token }}"
   tasks:
-    - name: Create tenant with all parameters
+    - name: Create tags
+      networktocode.nautobot.tag:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        description: "{{ item.description | default(omit) }}"
+        # content_types: "{{ item.content_types | default(omit) }}"
+        # ^^^ This isn't idempotent, not sure how this linking works but it's not on the tag itself
+        color: "{{ item.color | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
+      loop: "{{ nautobot_tags }}"
+      when:
+        - nautobot_tags is defined
+        - nautobot_tags | length > 0
+
+    - name: Create tenants
       networktocode.nautobot.tenant:
         <<: *nb_conn
-        name: "{{ item.name | default(omit) }}"
-        tenant_group: "{{ item.name | default(omit) }}"
-        description: "{{ item.name | default(omit) }}"
-        comments: "{{ item.name | default(omit) }}"
-        slug: "{{ item.name | default(omit) }}"
-        tags: "{{ item.name | default(omit) }}"
-        state: "{{ item.name | default(omit) }}"
+        name: "{{ item.name }}"
+        tenant_group: "{{ item.tenant_group | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        comments: "{{ item.comments | default(omit) }}"
+        slug: "{{ item.slug | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
       loop: "{{ nautobot_tenants }}"
       when:
         - nautobot_tenants is defined
         - nautobot_tenants | length > 0
+
+    - name: Create sites
+      networktocode.nautobot.site:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        status: "{{ item.status }}"
+        region: "{{ item.region | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        facility: "{{ item.facility | default(omit) }}"
+        asn: "{{ item.asn | default(omit) }}"
+        time_zone: "{{ item.time_zone | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        physical_address: "{{ item.physical_address | default(omit) }}"
+        shipping_address: "{{ item.shipping_address | default(omit) }}"
+        latitude: "{{ item.latitude | default(omit) }}"
+        longitude: "{{ item.longitude | default(omit) }}"
+        contact_name: "{{ item.contact_name | default(omit) }}"
+        contact_phone: "{{ item.contact_phone | default(omit) }}"
+        contact_email: "{{ item.contact_email | default(omit) }}"
+        slug: "{{ item.slug | default(omit) }}"
+        comments: "{{ item.comments | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        state: "{{ item.state | default(omit) }}"
+      loop: "{{ nautobot_sites }}"
+      when:
+        - nautobot_sites is defined
+        - nautobot_sites | length > 0
+
+    - name: Create racks
+      networktocode.nautobot.rack:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        site: "{{ item.site }}"
+        status: "{{ item.status }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        asset_tag: "{{ item.asset_tag | default(omit) }}"
+        comments: "{{ item.comments | default(omit) }}"
+        desc_units: "{{ item.desc_units | default(omit) }}"
+        facility_id: "{{ item.facility_id | default(omit) }}"
+        outer_depth: "{{ item.outer_depth | default(omit) }}"
+        outer_unit: "{{ item.outer_unit | default(omit) }}"
+        outer_width: "{{ item.outer_width | default(omit) }}"
+        rack_group: "{{ item.rack_group | default(omit) }}"
+        rack_role: "{{ item.rack_role | default(omit) }}"
+        serial: "{{ item.serial | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        type: "{{ item.type | default(omit) }}"
+        u_height: "{{ item.u_height | default(omit) }}"
+        width: "{{ item.width | default(omit) }}"
+      loop: "{{ nautobot_racks }}"
+      when:
+        - nautobot_racks is defined
+        - nautobot_racks | length > 0
+
+    - name: Create manufacturers
+      networktocode.nautobot.manufacturer:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        description: "{{ item.description | default(omit) }}"
+      loop: "{{ nautobot_manufacturers }}"
+      when:
+        - nautobot_manufacturers is defined
+        - nautobot_manufacturers | length > 0
+
+    - name: Create device types
+      networktocode.nautobot.device_type:
+        <<: *nb_conn
+        model: "{{ item.model }}"
+        u_height: "{{ item.u_height | default(1) }}"
+        state: "{{ item.state | default('present') }}"
+        # optional
+        comments: "{{ item.comments | default(omit) }}"
+        is_full_depth: "{{ item.is_full_depth | default(false) }}"
+        manufacturer: "{{ item.manufacturer | default(omit) }}"
+        part_number: "{{ item.part_number | default(omit) }}"
+        subdevice_role: "{{ item.subdevice_role | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+      loop: "{{ nautobot_device_types }}"
+      when:
+        - nautobot_device_types is defined
+        - nautobot_device_types | length > 0
+
+    - name: Create power port templates
+      networktocode.nautobot.power_port_template:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        device_type: "{{ item.device_type }}"
+        state: "{{ item.state | default('present') }}"
+        # optional
+        allocated_draw: "{{ item.allocated_draw | default(omit) }}"
+        maximum_draw: "{{ item.maximum_draw | default(omit) }}"
+        type: "{{ item.type | default(omit) }}"
+      loop: "{{ nautobot_power_port_templates }}"
+      when:
+        - nautobot_power_port_templates is defined
+        - nautobot_power_port_templates | length > 0
+
+    - name: Create device bay templates
+      networktocode.nautobot.device_bay_template:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        device_type: "{{ item.device_type }}"
+        state: "{{ item.state | default('present') }}"
+      loop: "{{ nautobot_device_bay_templates }}"
+      when:
+        - nautobot_device_bay_templates is defined
+        - nautobot_device_bay_templates | length > 0
+
+    - name: Create device role
+      networktocode.nautobot.device_role:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default('present') }}"
+        # optional
+        color: "{{ item.color | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        vm_role: "{{ item.vm_role | default(true) }}"
+      loop: "{{ nautobot_device_roles }}"
+      when:
+        - nautobot_device_roles is defined
+        - nautobot_device_roles | length > 0
+
+    - name: Create devices
+      networktocode.nautobot.device:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default('present') }}"
+        device_role: "{{ item.device_role }}"
+        device_type: "{{ item.device_type }}"
+        site: "{{ item.site }}"
+        status: "{{ item.status }}"
+        # optional
+        asset_tag: "{{ item.asset_tag | default(omit) }}"
+        cluster: "{{ item.cluster | default(omit) }}"
+        comments: "{{ item.comments | default(omit) }}"
+        face: "{{ item.face | default(omit) }}"
+        platform: "{{ item.platform | default(omit) }}"
+        position: "{{ item.position | default(omit) }}"
+        primary_ip4: "{{ item.primary_ip4 | default(omit) }}"
+        primary_ip6: "{{ item.primary_ip6 | default(omit) }}"
+        rack: "{{ item.rack | default(omit) }}"
+        serial: "{{ item.serial | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        vc_position: "{{ item.vc_position | default(omit) }}"
+        vc_priority: "{{ item.vc_priority | default(omit) }}"
+        virtual_chassis: "{{ item.virtual_chassis | default(omit) }}"
+      loop: "{{ nautobot_devices }}"
+      when:
+        - nautobot_devices is defined
+        - nautobot_devices | length > 0
+
+    # Can't get either of these to work, coming back later
+
+    # - name: Create device bays
+    #   networktocode.nautobot.device_bay:
+    #     <<: *nb_conn
+    #     name: "{{ item.name }}"
+    #     state: "{{ item.state | default(omit) }}"
+    #     device: "{{ item.device }}"
+    #     installed_device: "{{ item.device | default(omit) }}"
+    #     # optional
+    #     description: "{{ item.description | default(omit) }}"
+    #     tags: "{{ item.description | default(omit) }}"
+    #     data: "{{ item.data | default(omit) }}"
+    #   loop: "{{ nautobot_device_bays }}"
+    #   when:
+    #     - nautobot_device_bays is defined
+    #     - nautobot_device_bays | length > 0
+
+    # - name: Add device into device bay
+    #   netbox.netbox.netbox_device_bay:
+    #     <<: *netbox_conn
+    #     data:
+    #       device: "{{ item.device }}"
+    #       name: "{{ item.name }}"
+    #       description: "{{ item.description | default(omit) }}"
+    #       installed_device: "{{ item.device | default(omit) }}"
+    #     state: "{{ item.state | default(omit) }}"
+    #   loop: "{{ nautobot_device_bays }}"
+    #   when:
+    #     - nautobot_device_bays is defined
+    #     - nautobot_device_bays | length > 0
+
+    - name: Create cluster types
+      networktocode.nautobot.cluster_type:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+      loop: "{{ nautobot_cluster_types }}"
+      when:
+        - nautobot_cluster_types is defined
+        - nautobot_cluster_types | length > 0
+
+    # doesn't handle site/tags/tenant...
+    - name: Create clusters
+      networktocode.nautobot.cluster:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        cluster_type: "{{ item.cluster_type }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        cluster_group: "{{ item.cluster_group | default(omit) }}"
+        comments: "{{ item.comments | default(omit) }}"
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        site: "{{ item.site | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+      loop: "{{ nautobot_clusters }}"
+      when:
+        - nautobot_clusters is defined
+        - nautobot_clusters | length > 0
+
+    - name: Create VMs
+      networktocode.nautobot.virtual_machine:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        cluster: "{{ item.cluster }}"
+        state: "{{ item.state | default(omit) }}"
+        status: "{{ item.status }}"
+        # optional
+        comments: "{{ item.comments | default(omit) }}"
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        disk: "{{ item.disk | default(omit) }}"
+        memory: "{{ item.memory | default(omit) }}"
+        platform: "{{ item.platform | default(omit) }}"
+        primary_ip4: "{{ item.primary_ip4 | default(omit) }}"
+        primary_ip6: "{{ item.primary_ip6 | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        site: "{{ item.site | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        vcpus: "{{ item.vcpus | default(omit) }}"
+        virtual_machine_role: "{{ item.virtual_machine_role | default(omit) }}"
+      loop: "{{ nautobot_virtual_machines }}"
+      when:
+        - nautobot_virtual_machines is defined
+        - nautobot_virtual_machines | length > 0
+
+    - name: Create Device Interfaces
+      networktocode.nautobot.device_interface:
+        <<: *nb_conn
+        device: "{{ item.device }}"
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        status: "{{ item.status }}"
+        # optional
+        bridge: "{{ item.bridge | default(omit) }}"
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        enabled: "{{ item.enabled | default(omit) }}"
+        label: "{{ item.label | default(omit) }}"
+        lag: "{{ item.lag | default(omit) }}"
+        mac_address: "{{ item.mac_address | default(omit) }}"
+        mgmt_only: "{{ item.mgmt_only | default(omit) }}"
+        mode: "{{ item.mode | default(omit) }}"
+        mtu: "{{ item.mtu | default(omit) }}"
+        parent_interface: "{{ item.parent_interface | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        tagged_vlans: "{{ item.tagged_vlans | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        type: "{{ item.type | default(omit) }}"
+        untagged_vlan: "{{ item.untagged_vlan | default(omit) }}"
+        update_vc_child: "{{ item.update_vc_child | default(omit) }}"
+      loop: "{{ nautobot_device_interface }}"
+      when:
+        - nautobot_device_interface is defined
+        - nautobot_device_interface | length > 0
+
+    - name: Create VM Interfaces
+      networktocode.nautobot.vm_interface:
+        <<: *nb_conn
+        virtual_machine: "{{ item.virtual_machine }}"
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        description: "{{ item.description | default(omit) }}"
+        enabled: "{{ item.enabled | default(omit) }}"
+        mac_address: "{{ item.mac_address | default(omit) }}"
+        mode: "{{ item.mode | default(omit) }}"
+        mtu: "{{ item.mtu | default(omit) }}"
+        tagged_vlans: "{{ item.tagged_vlans | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        virtual_machine: "{{ item.virtual_machine | default(omit) }}"
+      loop: "{{ nautobot_vm_interface }}"
+      when:
+        - nautobot_vm_interface is defined
+        - nautobot_vm_interface | length > 0
+
+    - name: Create RIRs
+      networktocode.nautobot.rir:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        is_private: "{{ item.is_private | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        slug: "{{ item.slug | default(omit) }}"
+      loop: "{{ nautobot_rirs }}"
+      when:
+        - nautobot_rirs is defined
+        - nautobot_rirs | length > 0
+
+    - name: Create Aggregates
+      networktocode.nautobot.aggregate:
+        <<: *nb_conn
+        prefix: "{{ item.prefix }}"
+        rir: "{{ item.rir }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        date_added: "{{ item.date_added | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+      loop: "{{ nautobot_aggregates }}"
+      when:
+        - nautobot_aggregates is defined
+        - nautobot_aggregates | length > 0
+
+    - name: Create IPAM Roles
+      networktocode.nautobot.ipam_role:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        query_params: "{{ item.query_params | default(omit) }}"
+        slug: "{{ item.slug | default(omit) }}"
+        weight: "{{ item.weight | default(omit) }}"
+      loop: "{{ nautobot_ipam_roles }}"
+      when:
+        - nautobot_ipam_roles is defined
+        - nautobot_ipam_roles | length > 0
+
+    - name: Create VLANs
+      networktocode.nautobot.vlan:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        status: "{{ item.status }}"
+        vid: "{{ item.vid }}"
+        # optional
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        site: "{{ item.site | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        vlan_group: "{{ item.vlan_group | default(omit) }}"
+        vlan_role: "{{ item.vlan_role | default(omit) }}"
+      loop: "{{ nautobot_vlans }}"
+      when:
+        - nautobot_vlans is defined
+        - nautobot_vlans | length > 0
+
+    - name: Create VRFs
+      networktocode.nautobot.vrf:
+        <<: *nb_conn
+        name: "{{ item.name }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        enforce_unique: "{{ item.enforce_unique | default(omit) }}"
+        export_targets: "{{ item.export_targets | default(omit) }}"
+        import_targets: "{{ item.import_targets | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        rd: "{{ item.rd | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+      loop: "{{ nautobot_vrf }}"
+      when:
+        - nautobot_vrf is defined
+        - nautobot_vrf | length > 0
+
+    - name: Create Prefixes
+      networktocode.nautobot.prefix:
+        <<: *nb_conn
+        prefix: "{{ item.prefix }}"
+        state: "{{ item.state | default(omit) }}"
+        status: "{{ item.status }}"
+        # optional
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        family: "{{ item.family | default(4) }}"
+        first_available: "{{ item.first_available | default(omit) }}"
+        is_pool: "{{ item.is_pool | default(omit) }}"
+        parent: "{{ item.parent | default(omit) }}"
+        prefix_length: "{{ item.prefix_length | default(omit) }}"
+        prefix_role: "{{ item.prefix_role | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        site: "{{ item.site | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        vlan: "{{ item.vlan | default(omit) }}"
+        vrf: "{{ item.vrf | default(omit) }}"
+      loop: "{{ nautobot_prefix }}"
+      when:
+        - nautobot_prefix is defined
+        - nautobot_prefix | length > 0
+      ignore_errors: true # module is not idempotent
+
+    - name: SET FACT OF STRING
+      ansible.builtin.set_fact:
+        query_string: |
+          query {
+            virtual_machines {
+              id
+              name
+            }
+          }
+
+    - name: Obtain list of sites from Nautobot
+      set_fact:
+        query_response: "{{ query('networktocode.nautobot.lookup_graphql',
+                                  query_string,
+                                  url=nautobot_url,
+                                  token=nautobot_token) }}"
+
+    - debug:
+        var: query_response
+
+    - name: Test json_query
+      ansible.builtin.debug:
+        msg: "{{ query_response | community.general.json_query('data.virtual_machines[*].id') }}"
+
+
+    - name: Create IP Addresses
+      networktocode.nautobot.ip_address:
+        <<: *nb_conn
+        address: "{{ item.address }}"
+        state: "{{ item.state | default(omit) }}"
+        # optional
+        assigned_object: "{{ item.assigned_object | default(omit) }}"
+        device: "{{ item.device | default(omit) }}"
+        # name: "{{ item.name | default(omit) }}"
+        name: "{{ query_response | community.general.json_query('data.virtual_machines[?name==item.name].id') | default(omit) }}"
+        custom_fields: "{{ item.custom_fields | default(omit) }}"
+        description: "{{ item.description | default(omit) }}"
+        dns_name: "{{ item.dns_name | default(omit) }}"
+        nat_inside: "{{ item.nat_inside | default(omit) }}"
+        prefix: "{{ item.prefix | default(omit) }}"
+        query_params: "{{ item.query_params | default(omit) }}"
+        role: "{{ item.role | default(omit) }}"
+        status: "{{ item.status | default(omit) }}"
+        tags: "{{ item.tags | default(omit) }}"
+        tenant: "{{ item.tenant | default(omit) }}"
+        vrf: "{{ item.vrf | default(omit) }}"
+      loop: "{{ nautobot_ip_address }}"
+      when:
+        - nautobot_ip_address is defined
+        - nautobot_ip_address | length > 0
+
+
 ...
